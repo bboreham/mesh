@@ -61,15 +61,19 @@ func (peer *LocalPeer) ConnectionsTo(names []PeerName) []Connection {
 	return conns
 }
 
-func (peer *LocalPeer) CreateConnection(peerAddr string, acceptNewPeer bool) error {
+func (peer *LocalPeer) CreateConnection(localAddr string, peerAddr string, acceptNewPeer bool) error {
 	if err := peer.checkConnectionLimit(); err != nil {
+		return err
+	}
+	localTcpAddr, err := net.ResolveTCPAddr("tcp4", localAddr)
+	if err != nil {
 		return err
 	}
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", peerAddr)
 	if err != nil {
 		return err
 	}
-	tcpConn, err := net.DialTCP("tcp4", nil, tcpAddr)
+	tcpConn, err := net.DialTCP("tcp4", localTcpAddr, tcpAddr)
 	if err != nil {
 		return err
 	}

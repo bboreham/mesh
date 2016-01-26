@@ -18,6 +18,7 @@ type peerAddrs map[string]*net.TCPAddr
 type ConnectionMaker struct {
 	ourself     *LocalPeer
 	peers       *Peers
+	localAddr   string
 	port        int
 	discovery   bool
 	targets     map[string]*Target
@@ -44,11 +45,12 @@ type Target struct {
 
 type ConnectionMakerAction func() bool
 
-func NewConnectionMaker(ourself *LocalPeer, peers *Peers, port int, discovery bool) *ConnectionMaker {
+func NewConnectionMaker(ourself *LocalPeer, peers *Peers, localAddr string, port int, discovery bool) *ConnectionMaker {
 	actionChan := make(chan ConnectionMakerAction, ChannelSize)
 	cm := &ConnectionMaker{
 		ourself:     ourself,
 		peers:       peers,
+		localAddr:   localAddr,
 		port:        port,
 		discovery:   discovery,
 		directPeers: peerAddrs{},
@@ -290,7 +292,7 @@ func (cm *ConnectionMaker) connectToTargets(validTarget map[string]struct{}, dir
 
 func (cm *ConnectionMaker) attemptConnection(address string, acceptNewPeer bool) {
 	log.Printf("->[%s] attempting connection", address)
-	if err := cm.ourself.CreateConnection(address, acceptNewPeer); err != nil {
+	if err := cm.ourself.CreateConnection(cm.localAddr, address, acceptNewPeer); err != nil {
 		log.Errorf("->[%s] error during connection attempt: %v", address, err)
 		cm.ConnectionAborted(address, err)
 	}
