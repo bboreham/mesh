@@ -87,7 +87,17 @@ func newConnectionMaker(ourself *localPeer, peers *Peers, localAddr string, port
 
 func (cm *connectionMaker) SetPeersDB(db DB) {
 	cm.peersDB = db
-	db.Load(&cm.directPeers)
+	var peers []string
+	db.Load(&peers)
+	cm.InitiateConnections(peers, true)
+}
+
+func (cm *connectionMaker) directPeersSlice() []string {
+	var peers []string
+	for peer := range cm.directPeers {
+		peers = append(peers, peer)
+	}
+	return peers
 }
 
 // InitiateConnections creates new connections to the provided peers,
@@ -124,7 +134,7 @@ func (cm *connectionMaker) InitiateConnections(peers []string, replace bool) []e
 				target.nextTryNow()
 			}
 		}
-		cm.peersDB.Save(cm.directPeers)
+		cm.peersDB.Save(cm.directPeersSlice())
 		return true
 	}
 	return errors
@@ -149,7 +159,7 @@ func (cm *connectionMaker) ForgetConnections(peers []string) {
 		for _, peer := range peers {
 			delete(cm.directPeers, peer)
 		}
-		cm.peersDB.Save(cm.directPeers)
+		cm.peersDB.Save(cm.directPeersSlice())
 		return false
 	}
 }
