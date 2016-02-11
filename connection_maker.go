@@ -27,8 +27,19 @@ type connectionMaker struct {
 	targets     map[string]*target
 	connections map[Connection]struct{}
 	directPeers peerAddrs
+	peersDB     DB
 	actionChan  chan<- connectionMakerAction
 }
+
+type DB interface {
+	Load(interface{})
+	Save(interface{})
+}
+
+type nullDB struct{}
+
+func (nullDB) Load(interface{}) {}
+func (nullDB) Save(interface{}) {}
 
 // TargetState describes the connection state of a remote target.
 type targetState int
@@ -67,10 +78,16 @@ func newConnectionMaker(ourself *localPeer, peers *Peers, localAddr string, port
 		directPeers: peerAddrs{},
 		targets:     make(map[string]*target),
 		connections: make(map[Connection]struct{}),
+		peersDB:     nullDB{},
 		actionChan:  actionChan,
 	}
 	go cm.queryLoop(actionChan)
 	return cm
+}
+
+func (cm *connectionMaker) SetPeersDB(db DB) {
+	cm.peersDB = db
+	db.Load(&cm.directPeers)
 }
 
 // InitiateConnections creates new connections to the provided peers,
@@ -107,6 +124,7 @@ func (cm *connectionMaker) InitiateConnections(peers []string, replace bool) []e
 				target.nextTryNow()
 			}
 		}
+		cm.peersDB.Save(cm.directPeers)
 		return true
 	}
 	return errors
@@ -131,6 +149,7 @@ func (cm *connectionMaker) ForgetConnections(peers []string) {
 		for _, peer := range peers {
 			delete(cm.directPeers, peer)
 		}
+		cm.peersDB.Save(cm.directPeers)
 		return false
 	}
 }
